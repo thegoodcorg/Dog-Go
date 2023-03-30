@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 namespace DogGo.Repositories
 {
-    public class DogRepository :IDogRepository
+    public class DogRepository : IDogRepository
     {
         private readonly IConfiguration _config;
 
@@ -25,16 +25,16 @@ namespace DogGo.Repositories
 
         public List<Dog> GetAllDogs()
         {
-            using(SqlConnection conn = Connection)
+            using (SqlConnection conn = Connection)
             {
                 conn.Open();
-                using(SqlCommand cmd = conn.CreateCommand())
+                using (SqlCommand cmd = conn.CreateCommand())
                 {
                     cmd.CommandText = @"SELECT 
                                         Id, [Name], ownerId, Breed
                                         FROM dog";
-                    using(SqlDataReader reader = cmd.ExecuteReader())
-                    { 
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
                         List<Dog> dogs = new List<Dog>();
                         while (reader.Read())
                         {
@@ -49,6 +49,89 @@ namespace DogGo.Repositories
                         }
                         return dogs;
                     }
+                }
+            }
+        }
+
+        public void AddDog(Dog dog)
+        {
+            using (SqlConnection conn = Connection)
+            {
+                conn.Open();
+                using (SqlCommand cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"
+                                        INSERT INTO dog ([Name], OwnerId, Breed)
+                                        OUTPUT INSERTED.ID
+                                        VALUES (@name, @ownerId, @breed)";
+
+                    cmd.Parameters.AddWithValue("@name", dog.Name);
+                    cmd.Parameters.AddWithValue("@ownerId", dog.OwnerId);
+                    cmd.Parameters.AddWithValue("@breed", dog.Breed);
+
+                    int id = (int)cmd.ExecuteScalar();
+
+                    dog.Id = id;
+                }
+            }
+        }
+        public Dog GetDogById(int id)
+        {
+            using (SqlConnection conn = Connection)
+            {
+                conn.Open();
+                using (SqlCommand cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"
+                                        SELECT Id, [name], breed, ownerId, notes 
+                                        FROM dog
+                                        WHERE dog.id = @id";
+
+                    cmd.Parameters.AddWithValue("@id", id);
+
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            Dog dog = new Dog()
+                            {
+                                Id = reader.GetInt32(reader.GetOrdinal("id")),
+                                Name = reader.GetString(reader.GetOrdinal("name")),
+                                Breed = reader.GetString(reader.GetOrdinal("Breed")),
+                                //OwnerId = reader.GetInt32(reader.GetOrdinal("ownerId")),
+                                //Notes = reader.GetString(reader.GetOrdinal("notes"))
+                            };
+                            return dog;
+                        }
+                        return null;
+                    }
+                }
+            }
+        }
+        public void UpdateDog(Dog dog)
+        {
+            using(SqlConnection conn = Connection)
+            {
+                conn.Open();
+
+                using(SqlCommand cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"
+                                        UPDATE dog
+                                        SET 
+                                        [name] = @name,
+                                        Breed = @breed,
+                                        ownerId = @ownerId,
+                                        notes = @notes
+                                       WHERE id = @id";
+                    cmd.Parameters.AddWithValue("@name", dog.Name);
+                    cmd.Parameters.AddWithValue("@breed", dog.Breed);
+                    cmd.Parameters.AddWithValue("@ownerId", dog.OwnerId);
+                    cmd.Parameters.AddWithValue("@notes", dog.Notes);
+
+
+                    cmd.ExecuteNonQuery(); 
+
                 }
             }
         }
